@@ -320,7 +320,7 @@ Content-Type: application/json
 {
   "runId": "RUN-...",
   "mode": "SYNTHETIC",
-  "orchestratorStatus": "APPROVAL_PENDING",
+  "orchestratorStatus": "COMPLETED",
   "agents": [],
   "metrics": {
     "shipments": 18,
@@ -385,7 +385,7 @@ Raw Data는 Container × TS 단계의 Long Format을 사용한다. 동일 Shipme
 ### 9.1 권장 서버 측 파이프라인
 
 ```text
-TMS/ERP Shipment ─┐
+Cello Shipment ───┐
 Carrier Schedule ─┼─> Canonical Shipment/TS Store
 AIS Stream ───────┘               │
                                   ├─> Dwell Prediction
@@ -422,7 +422,7 @@ News/Weather/Mail/myKN ─> Event Store ─> Event Matching
 3. Excel 다운로드는 화면 조회와 별도의 Export 권한을 적용한다.
 4. 이벤트 원문 링크는 `https` allowlist와 URL 검증을 거친다.
 5. 선사 메일 수집 시 본문과 첨부파일의 개인정보를 제거한다.
-6. 필터, 조회, 다운로드, Agent 실행 및 승인 행위를 감사로그로 저장한다.
+6. 필터, 조회, 다운로드 및 Agent 실행 행위를 감사로그로 저장한다.
 7. 공개 배포에는 실제 물동이나 비밀정보를 포함하지 않는다.
 
 ## 11. 성능 및 운영 요구사항
@@ -489,14 +489,14 @@ News/Weather/Mail/myKN ─> Event Store ─> Event Matching
 
 ### 다음 단계
 
-1. TMS/ERP에서 Shipment, B/L, Container 및 TS 계획을 수집한다.
-2. 실제·예정 대기일수 산식과 예측모델을 확정한다.
+1. Cello 시스템에서 Shipment, B/L, Container 및 TS 계획을 수집한다.
+2. 실제·예정 대기일수 산식과 예측모델을 정의한다.
 3. AIS 서버 프록시와 Shipment–MMSI 시간 이력 테이블을 구축한다.
 4. 뉴스·기상·선사 메일·myKN 수집과 이벤트 군집화를 운영화한다.
 5. 현재 필터 조건을 서버 Export Job에 전달하여 동적 Excel을 제공한다.
 6. SSO, 역할 기반 권한, 다운로드 권한 및 감사로그를 적용한다.
-7. A1~A5를 비동기 실행하고 승인 워크플로와 연결한다.
+7. A1~A5를 비동기 실행하고 센싱 인사이트를 대시보드에 반영한다.
 
 ---
 
-본 문서는 v2.2 공개 데모의 실제 구현 계약을 기준으로 작성되었다. 운영 적용 시 데이터 소유자, 보안 담당자 및 물류 운영팀의 검토와 승인을 거쳐야 한다.
+본 문서는 v2.2 공개 데모의 실제 구현 계약을 기준으로 작성되었다. 운영 적용 시 데이터 소유자, 보안 담당자 및 물류 운영팀과 적용 범위를 확인한다.
