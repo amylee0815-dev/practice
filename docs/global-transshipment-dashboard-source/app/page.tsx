@@ -636,19 +636,20 @@ export default function Home() {
       currentCriticalRate,
       weekAgoCriticalRate,
       criticalResolved: Math.max(0, weekAgoCritical - globalKpiCounts.CRITICAL),
-      firstActionHours: shipmentCount ? 1.8 + (globalKpiCounts.CRITICAL / shipmentCount) * 2.2 : 0,
-      ideaUsage: shipmentCount ? (actions.length / shipmentCount) * 100 : 0,
       trend,
       trendMax,
-      portRows: portViews.filter(port => port.resultCount > 0).map(port => ({
-        name: port.name,
-        averageWait: port.avgWait,
-        change: port.avgWait ? -Math.max(0.4, port.avgWait * 0.22) : 0,
-        critical: port.criticalBls,
-        status: port.maxWait >= 21 ? "주의" : port.maxWait >= 7 ? "개선" : "정상",
-      })),
+      portRows: portViews
+        .filter(port => port.resultCount > 0)
+        .map(port => ({
+          name: port.name,
+          averageWait: port.avgWait,
+          change: port.avgWait ? -Math.max(0.4, port.avgWait * 0.22) : 0,
+          critical: port.criticalBls,
+          status: port.maxWait >= 21 ? "주의" : port.maxWait >= 7 ? "개선" : "정상",
+        }))
+        .sort((a, b) => b.averageWait - a.averageWait || b.critical - a.critical || a.name.localeCompare(b.name)),
     };
-  }, [actions.length, filteredShipments, globalKpiCounts, portViews, relevantStages]);
+  }, [filteredShipments, globalKpiCounts, portViews, relevantStages]);
   const pageSubjects: Record<string, { title: string; subtitle: string; note?: string }> = {
     관제: {
       title: "환적 리스크 센싱",
@@ -975,9 +976,6 @@ export default function Home() {
             ["KPI FAIL 감소율", `${performanceData.failReduction.toFixed(1)}%`, `${performanceData.weekAgoFail}건 → ${globalKpiCounts.fail}건`, "good"],
             ["Critical 해소", `${performanceData.criticalResolved}건`, `${performanceData.weekAgoCritical}건 → ${globalKpiCounts.CRITICAL}건`, "good"],
             ["평균 대기 감소", `${performanceData.waitReduction.toFixed(1)}일`, "필터 물동 기준", "neutral"],
-            ["SLA 회복률", `${performanceData.failReduction.toFixed(1)}%`, "KPI FAIL 감소 기준", "good"],
-            ["최초 조치시간", `${performanceData.firstActionHours.toFixed(1)}h`, "목표 4h 이내", "warning"],
-            ["아이디어 활용률", `${performanceData.ideaUsage.toFixed(1)}%`, `참고 ${actions.length}건`, "medium"],
           ].map(row => <article className={`performance-card ${row[3]}`} key={row[0]}><span>{row[0]}</span><strong>{row[1]}</strong><small>{row[2]}</small></article>)}
         </section>
         <section className="performance-main-grid">
@@ -986,7 +984,7 @@ export default function Home() {
         </section>
         <section className="performance-lower-grid">
           <article className="panel port-performance"><div className="panel-head"><div><p className="eyebrow">PORT PERFORMANCE</p><h2>항만별 개선 현황</h2></div><button className="text-button" onClick={() => notify("성과 보고서 Excel을 준비했습니다.")}>보고서 다운로드</button></div><table><thead><tr><th>항만</th><th>평균 대기</th><th>전월 대비</th><th>Critical</th><th>상태</th></tr></thead><tbody>{performanceData.portRows.map(row => <tr key={row.name}><td><strong>{row.name}</strong></td><td>{row.averageWait.toFixed(1)}일</td><td className="positive">−{Math.abs(row.change).toFixed(1)}일</td><td>{row.critical}</td><td><span className={`performance-status status-${row.status}`}>{row.status}</span></td></tr>)}{performanceData.portRows.length === 0 && <tr><td colSpan={5} className="empty-state">현재 필터와 일치하는 항만 데이터가 없습니다.</td></tr>}</tbody></table></article>
-          <article className="panel quality-panel"><div className="panel-head"><div><p className="eyebrow">OPERATING QUALITY</p><h2>데이터·자동화 품질</h2></div><span className="demo-label">월간</span></div><div className="quality-list">{[["이벤트 매칭 정확도",87],["AIS 데이터 신선도",97],["뉴스·메일 수집 성공률",94],["예정 대기 예측 적중률",81]].map(([label,value]) => <div key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}}/></div><b>{value}%</b></div>)}</div></article>
+          <article className="panel quality-panel"><div className="panel-head"><div><p className="eyebrow">OPERATING QUALITY</p><h2>데이터 분석 품질·신뢰도</h2></div><span className="demo-label">월간</span></div><div className="quality-list">{[["이벤트 매칭 정확도",87],["AIS 데이터 신선도",97],["뉴스·메일 수집 성공률",94],["예정 대기 예측 적중률",81]].map(([label,value]) => <div key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}}/></div><b>{value}%</b></div>)}</div></article>
         </section>
       </section>}
 
