@@ -477,7 +477,6 @@ export default function Home() {
   const [liveEvents, setLiveEvents] = useState<EventItem[]>([]);
   const [liveEventSources, setLiveEventSources] = useState<Record<number, EventSource[]>>({});
   const [eventFeed, setEventFeed] = useState({ status: "idle", collectedAt: "", latencyMs: 0, sources: "0/0" });
-  const eventFetchStarted = useRef(false);
   const [filter, setFilter] = useState<"ALL" | Severity>("ALL");
   const [activeNav, setActiveNav] = useState("관제");
   const [scenarioOpen, setScenarioOpen] = useState(false);
@@ -491,28 +490,45 @@ export default function Home() {
   });
 
   useEffect(() => {
-    if (activeNav !== "이벤트" || eventFetchStarted.current) return;
-    eventFetchStarted.current = true;
+    if (activeNav !== "이벤트") return;
     const controller = new AbortController();
-    setEventFeed(current => ({ ...current, status: "loading" }));
-    fetch("/api/events", { signal: controller.signal, cache: "no-store" })
-      .then(async response => {
+
+    const refreshEvents = async () => {
+      setEventFeed(current => ({ ...current, status: current.collectedAt ? current.status : "loading" }));
+      try {
+        const response = await fetch("/api/events", { signal: controller.signal, cache: "no-store" });
         if (!response.ok) throw new Error("event feed failed");
-        return response.json() as Promise<{ mode: string; collectedAt: string; latencyMs: number; sourcesSucceeded: number; sourcesTotal: number; events: EventItem[] }>;
-      })
-      .then(result => {
+        const result = await response.json() as { mode: string; collectedAt: string; latencyMs: number; sourcesSucceeded: number; sourcesTotal: number; events: EventItem[] };
         if (!result.events.length) throw new Error("event feed empty");
         setLiveEvents(result.events);
         setLiveEventSources(Object.fromEntries(result.events.map(event => [event.id, event.sourceLinks ?? []])));
-        setSelectedEventId(result.events[0].id);
+        setSelectedEventId(current => result.events.some(event => event.id === current) ? current : result.events[0].id);
         setEventFeed({ status: "live", collectedAt: result.collectedAt, latencyMs: result.latencyMs, sources: `${result.sourcesSucceeded}/${result.sourcesTotal}` });
-      })
-      .catch(error => {
+      } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setEventFeed(current => ({ ...current, status: "fallback" }));
-      });
-    return () => controller.abort();
+        setEventFeed(current => ({ ...current, status: "fallback", collectedAt: current.collectedAt || new Date().toISOString() }));
+      }
+    };
+
+    void refreshEvents();
+    const refreshTimer = window.setInterval(() => void refreshEvents(), 15 * 60 * 1000);
+    return () => {
+      window.clearInterval(refreshTimer);
+      controller.abort();
+    };
   }, [activeNav]);
+
+  const eventUpdatedAt = eventFeed.collectedAt
+    ? new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(new Date(eventFeed.collectedAt))
+    : "이벤트 탭 진입 시 수집";
 
   const eventPool = liveEvents.length ? liveEvents : events;
   const allEventSources = { ...eventSourceLinks, ...liveEventSources };
@@ -755,7 +771,7 @@ export default function Home() {
         </nav>
         <div className="top-actions">
           <span className="live-indicator"><i/>LIVE</span>
-          <span className="timestamp">2026.07.28 12:50 KST</span>
+          <span className="timestamp">뉴스 업데이트 {eventUpdatedAt} KST · 15분 주기</span>
           <button className="icon-button" onClick={() => notify("새로운 경보 12건을 확인했습니다.")} aria-label="알림">12</button>
         </div>
       </header>
