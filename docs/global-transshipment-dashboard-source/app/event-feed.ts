@@ -125,12 +125,9 @@ export function mergeLiveEvents(groups: LiveEvent[][]) {
   for (const event of groups.flat().sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))) {
     const family = eventFamily(event.title);
     const location = eventLocation(event);
-    const publishedAt = new Date(event.publishedAt).getTime();
     const cluster = clusters.find(candidate => {
-      const candidateTime = new Date(candidate.publishedAt).getTime();
       return candidate.clusterFamily === family
-        && candidate.clusterLocation === location
-        && Math.abs(candidateTime - publishedAt) <= 7 * 24 * 60 * 60 * 1000;
+        && candidate.clusterLocation === location;
     });
 
     if (!cluster) {

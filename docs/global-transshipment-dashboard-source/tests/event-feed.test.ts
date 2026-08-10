@@ -33,7 +33,7 @@ test("clusters differently worded stories about the same event and merges source
   const second = parseNewsRss(`<?xml version="1.0"?><rss><channel><item>
     <title>Suez traffic rerouted around Cape of Good Hope after attacks</title>
     <link>https://carrier.example/advisory</link>
-    <pubDate>Mon, 03 Aug 2026 18:00:00 GMT</pubDate>
+    <pubDate>Mon, 03 Aug 2025 18:00:00 GMT</pubDate>
     <source url="https://carrier.example/">Carrier Advisory</source>
   </item></channel></rss>`, new Date("2026-08-04T04:00:00Z"));
 
