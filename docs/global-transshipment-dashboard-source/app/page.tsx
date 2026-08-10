@@ -793,7 +793,6 @@ export default function Home() {
           ["활성 이벤트", String(derivedEvents.length), "건", "필터 물동 매칭", "neutral"],
           ["Critical 이벤트", String(derivedEvents.filter(event => event.severity === "CRITICAL").length), "건", "즉시 확인", "danger"],
           ["영향 Shipment", String(selectedEvent.shipments), "건", "선택 이벤트", "warning"],
-          ["평균 신뢰도", derivedEvents.length ? String(Math.round(derivedEvents.reduce((sum, event) => sum + event.confidence, 0) / derivedEvents.length)) : "0", "%", "SOURCE 교차검증", "good"],
         ].map(([label, value, unit, delta, tone]) => <article className={`kpi-card ${tone}`} key={label}><div><span>{label}</span><i/></div><strong>{value}<small>{unit}</small></strong><p>{delta}</p></article>)}
       </section>}
 
