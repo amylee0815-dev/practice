@@ -8,7 +8,7 @@ const feeds = [
 export async function GET() {
   const startedAt = Date.now();
   const results = await Promise.allSettled(feeds.map(async url => {
-    const response = await fetch(url, { headers: { "user-agent": "Global-Transshipment-Control-Tower/1.0" } });
+    const response = await fetch(url, { cache: "no-store", headers: { "user-agent": "Global-Transshipment-Control-Tower/1.0" } });
     if (!response.ok) throw new Error(`feed ${response.status}`);
     return parseNewsRss(await response.text());
   }));
@@ -20,6 +20,5 @@ export async function GET() {
     sourcesSucceeded: results.filter(result => result.status === "fulfilled").length,
     sourcesTotal: feeds.length,
     events,
-  }, { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=900" } });
+  }, { headers: { "cache-control": "no-store" } });
 }
-
