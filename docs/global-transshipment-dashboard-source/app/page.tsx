@@ -37,6 +37,7 @@ type EventItem = {
   portCodes: string[];
   type: string;
   title: string;
+  titleKo?: string;
   scope: string;
   severity: Severity;
   source: string;
@@ -486,7 +487,7 @@ export default function Home() {
   const [selectedScenario, setSelectedScenario] = useState("대체 환적항 + 트럭");
   const [mapPortCodes, setMapPortCodes] = useState<string[]>([]);
   const [dashboardFilters, setDashboardFilters] = useState<ShipmentFilters>({
-    corporations: [], ports: [], dwellBands: [], blNos: [], containerNos: [],
+    corporations: [], carriers: [], ports: [], dwellBands: [], blNos: [], containerNos: [],
   });
 
   useEffect(() => {
@@ -592,6 +593,7 @@ export default function Home() {
 
   const filterOptions = useMemo(() => ({
     corporations: [...new Set(demoShipments.map(row => row.corporation))].sort().map(value => ({ value, label: value })),
+    carriers: [...new Set(demoShipments.map(row => row.carrier))].sort().map(value => ({ value, label: value })),
     ports: portCatalog.map(port => ({ value: port.code, label: `${port.name} (${port.code})` })),
     dwellBands: (Object.keys(riskBandLabels) as RiskBand[]).map(value => ({ value, label: riskBandLabels[value] })),
     blNos: demoShipments.map(row => ({ value: row.blNo, label: row.blNo })),
@@ -672,7 +674,7 @@ export default function Home() {
   };
 
   const downloadRawData = () => {
-    const headers = ["Shipment No.", "B/L No.", "Container No.", "생산법인", "Route", "TS 단계", "환적항", "환적항 코드", "대기일수", "위험등급", "단계 상태", "데이터 상태", "Vessel", "MMSI"];
+    const headers = ["Shipment No.", "B/L No.", "Container No.", "생산법인", "선사", "Route", "TS 단계", "환적항", "환적항 코드", "대기일수", "위험등급", "단계 상태", "데이터 상태", "Vessel", "MMSI"];
     const rows = filteredShipments.flatMap(shipment => {
       const containers = dashboardFilters.containerNos.length
         ? shipment.containerNos.filter(container => dashboardFilters.containerNos.includes(container))
@@ -682,6 +684,7 @@ export default function Home() {
         shipment.blNo,
         container,
         shipment.corporation,
+        shipment.carrier,
         shipment.route,
         `TS${stage.sequence}`,
         portCatalog.find(port => port.code === stage.portCode)?.name ?? stage.portCode,
@@ -770,10 +773,11 @@ export default function Home() {
       <section className="global-filter-panel" aria-label="대시보드 전역 필터">
         <div className="global-filter-head">
           <div><p className="eyebrow">GLOBAL FILTER</p><strong>{filteredShipments.length} Shipment · {new Set(filteredShipments.map(row => row.blNo)).size} B/L</strong></div>
-          <div><span>동일 필드 OR · 필드 간 AND · 환적항/대기일수 동일 TS 단계 매칭</span><button onClick={downloadRawData}>Raw Data ↓</button><button onClick={() => updateDashboardFilters({ corporations: [], ports: [], dwellBands: [], blNos: [], containerNos: [] })} disabled={!activeFilterCount}>전체 초기화</button></div>
+          <div><span>동일 필드 OR · 필드 간 AND · 환적항/대기일수 동일 TS 단계 매칭</span><button onClick={downloadRawData}>Raw Data ↓</button><button onClick={() => updateDashboardFilters({ corporations: [], carriers: [], ports: [], dwellBands: [], blNos: [], containerNos: [] })} disabled={!activeFilterCount}>전체 초기화</button></div>
         </div>
         <div className="global-filter-grid">
           <MultiSelectFilter label="생산법인" options={filterOptions.corporations} selected={dashboardFilters.corporations} onChange={corporations => updateDashboardFilters(current => ({ ...current, corporations }))}/>
+          <MultiSelectFilter label="선사" options={filterOptions.carriers} selected={dashboardFilters.carriers} onChange={carriers => updateDashboardFilters(current => ({ ...current, carriers }))}/>
           <MultiSelectFilter label="환적항" options={filterOptions.ports} selected={dashboardFilters.ports} onChange={ports => updateDashboardFilters(current => ({ ...current, ports }))}/>
           <MultiSelectFilter label="환적 대기 일수" options={filterOptions.dwellBands} selected={dashboardFilters.dwellBands} onChange={dwellBands => updateDashboardFilters(current => ({ ...current, dwellBands: dwellBands as RiskBand[] }))}/>
           <MultiSelectFilter label="B/L 번호" options={filterOptions.blNos} selected={dashboardFilters.blNos} onChange={blNos => updateDashboardFilters(current => ({ ...current, blNos }))}/>
@@ -872,10 +876,10 @@ export default function Home() {
                       }
                     }}
                     tabIndex={0}
-                    aria-label={`${event.title} 출처 링크 보기`}
+                    aria-label={`${event.titleKo ?? event.title} 출처 링크 보기`}
                   >
                     <td>{index + 1}</td>
-                    <td><div className="event-title"><span>{event.type}</span><strong>{event.title}</strong><small>{event.source} · {event.updated} · SOURCE 보기</small></div></td>
+                    <td><div className="event-title"><span>{event.type}</span><strong>{event.titleKo ?? event.title}</strong><small>{event.source} · {event.updated} · SOURCE 보기</small></div></td>
                     <td><b>{event.containers} Container</b><small>{event.shipments} Shipment · {event.bls} B/L</small></td>
                     <td>{event.delay}</td>
                     <td><div className="confidence"><span style={{width: `${event.confidence}%`}}/><b>{event.confidence}%</b></div></td>
@@ -894,7 +898,7 @@ export default function Home() {
             <SeverityBadge level={selectedEvent.severity}/>
           </div>
           <div className="selected-event">
-            <strong>{selectedEvent.title}</strong><span>{selectedEvent.scope}</span>
+            <strong>{selectedEvent.titleKo ?? selectedEvent.title}</strong><span>{selectedEvent.scope}</span>
           </div>
           <div className="impact-metrics">
             <div><span>Shipment</span><strong>{selectedEvent.shipments}</strong></div>
@@ -942,7 +946,7 @@ export default function Home() {
         <div className="scenario-context-grid">
           <article className="panel scenario-target">
             <div className="panel-head"><div><p className="eyebrow">DECISION TARGET</p><h2>대응 대상 화물</h2></div>{activeAction && <SeverityBadge level={activeAction.level}/>}</div>
-            {activeAction ? <div className="target-body"><div><strong>{activeAction.id}</strong><span>{activeAction.value}</span></div><p>{activeAction.route}</p><dl><div><dt>위험 단계</dt><dd>{activeAction.port}</dd></div><div><dt>환적 대기</dt><dd>{activeAction.wait}</dd></div><div><dt>연관 이벤트</dt><dd>{selectedEvent.title}</dd></div><div><dt>판정</dt><dd>KPI FAIL</dd></div></dl></div> : <p className="empty-state">현재 필터 범위에 시나리오 대상이 없습니다.</p>}
+            {activeAction ? <div className="target-body"><div><strong>{activeAction.id}</strong><span>{activeAction.value}</span></div><p>{activeAction.route}</p><dl><div><dt>위험 단계</dt><dd>{activeAction.port}</dd></div><div><dt>환적 대기</dt><dd>{activeAction.wait}</dd></div><div><dt>연관 이벤트</dt><dd>{selectedEvent.titleKo ?? selectedEvent.title}</dd></div><div><dt>판정</dt><dd>KPI FAIL</dd></div></dl></div> : <p className="empty-state">현재 필터 범위에 시나리오 대상이 없습니다.</p>}
           </article>
           <article className="panel decision-guardrail">
             <div className="panel-head"><div><p className="eyebrow">IDEA CRITERIA</p><h2>아이디어 평가 기준</h2></div><span className="demo-label">내부 참고용</span></div>
@@ -1103,7 +1107,8 @@ export default function Home() {
             </div>
             <div className="source-event-summary">
               <div><SeverityBadge level={sourceEvent.severity}/><span>{sourceEvent.type}</span><span>{sourceEvent.scope}</span></div>
-              <strong>{sourceEvent.title}</strong>
+              <strong>{sourceEvent.titleKo ?? sourceEvent.title}</strong>
+              {sourceEvent.titleKo && sourceEvent.titleKo !== sourceEvent.title && <small className="source-original-title">원문: {sourceEvent.title}</small>}
               <p>탐지 신뢰도 {sourceEvent.confidence}% · {sourceEvent.updated} 갱신</p>
             </div>
             <div className="source-link-list">
@@ -1126,4 +1131,3 @@ export default function Home() {
     </main>
   );
 }
-

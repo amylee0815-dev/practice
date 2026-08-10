@@ -14,6 +14,7 @@ test("maps a live story to a port and preserves its source", () => {
   assert.deepEqual(event.portCodes, ["SGSIN"]);
   assert.equal(event.severity, "HIGH");
   assert.equal(event.confidence, 92);
+  assert.equal(event.titleKo, "싱가포르 항만 혼잡 및 환적 지연");
   assert.equal(event.sourceLinks[0].url, "https://www.mpa.gov.sg/");
 });
 
@@ -21,4 +22,3 @@ test("deduplicates repeated feed stories", () => {
   const events = parseNewsRss(rss, new Date("2026-08-04T04:00:00Z"));
   assert.equal(mergeLiveEvents([events, events]).length, 1);
 });
-

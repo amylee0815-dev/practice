@@ -3,6 +3,7 @@ export type LiveEvent = {
   portCodes: string[];
   type: string;
   title: string;
+  titleKo: string;
   scope: string;
   severity: "CRITICAL" | "HIGH" | "MEDIUM";
   source: string;
@@ -24,6 +25,30 @@ const ports: Array<[string, RegExp]> = [
   ["KRPUS", /busan|pusan|krpus/i],
   ["USLAX", /los angeles|uslax/i],
 ];
+
+const portNames: Record<string, string> = {
+  SGSIN: "싱가포르",
+  CNSHA: "상하이",
+  CNNGB: "닝보",
+  PAPTY: "파나마",
+  NLRTM: "로테르담",
+  AEJEA: "제벨알리",
+  KRPUS: "부산",
+  USLAX: "로스앤젤레스",
+};
+
+export function koreanHeadline(title: string, portCodes: string[]) {
+  if (/[가-힣]/.test(title)) return title;
+  const place = portCodes.map(code => portNames[code] ?? code).join("·") || "글로벌";
+  if (/red sea|suez|cape of good hope|attack|war|security|conflict/i.test(title)) return "홍해·수에즈 해역 긴장에 따른 우회 운항 확대";
+  if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return `${place} 기상 악화에 따른 해상운송 차질`;
+  if (/strike|labor|union/i.test(title)) return `${place} 항만 파업에 따른 운영 차질`;
+  if (/canal/i.test(title)) return `${place} 운하 운영 변경 및 통항 지연`;
+  if (/closed|closure|blocked/i.test(title)) return `${place} 항만 폐쇄 및 운영 차질`;
+  if (/rerout|route change|diversion/i.test(title)) return `${place} 항로 우회 및 운항 일정 변경`;
+  if (/congestion|delay|disruption|transshipment/i.test(title)) return `${place} 항만 혼잡 및 환적 지연`;
+  return `${place} 해상운송 리스크 동향`;
+}
 
 const text = (xml: string, tag: string) => {
   const value = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, "i"))?.[1] ?? "";
@@ -57,6 +82,7 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
       portCodes,
       type: classify(title),
       title,
+      titleKo: koreanHeadline(title, portCodes),
       scope: portCodes.length ? portCodes.join("·") : "GLOBAL",
       severity: severe ? "CRITICAL" as const : elevated ? "HIGH" as const : "MEDIUM" as const,
       source,
@@ -79,4 +105,3 @@ export function mergeLiveEvents(groups: LiveEvent[][]) {
     return true;
   }).slice(0, 20).map((event, index) => ({ ...event, id: 10_000 + index }));
 }
-

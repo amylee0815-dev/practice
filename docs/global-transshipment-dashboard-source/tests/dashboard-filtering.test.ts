@@ -4,6 +4,7 @@ import { demoShipments, filterShipments, matchingStages, type ShipmentFilters } 
 
 const filters = (overrides: Partial<ShipmentFilters> = {}): ShipmentFilters => ({
   corporations: [],
+  carriers: [],
   ports: [],
   dwellBands: [],
   blNos: [],
@@ -25,3 +26,7 @@ test("same-field choices use OR and container filtering is exact", () => {
   assert.deepEqual(result.map(shipment => shipment.shipmentNo), ["SHP-2048"]);
 });
 
+test("carrier filtering applies to the shared shipment scope", () => {
+  const result = filterShipments(demoShipments, filters({ carriers: ["HMM"] }));
+  assert.deepEqual(result.map(shipment => shipment.shipmentNo).sort(), ["SHP-4402", "SHP-4409", "SHP-6705"]);
+});
