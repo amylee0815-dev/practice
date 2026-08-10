@@ -97,11 +97,54 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
 }
 
 export function mergeLiveEvents(groups: LiveEvent[][]) {
-  const seen = new Set<string>();
-  return groups.flat().sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).filter(event => {
-    const key = event.title.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 80);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 20).map((event, index) => ({ ...event, id: 10_000 + index }));
+  const severityRank = { MEDIUM: 1, HIGH: 2, CRITICAL: 3 } as const;
+  const normalizedTitle = (title: string) => title.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 80);
+  const eventFamily = (title: string) => {
+    if (/red sea|suez|cape of good hope|houthi|bab el.mandeb/i.test(title)) return "RED_SEA_SECURITY";
+    if (/attack|war|security|conflict/i.test(title)) return "SECURITY_DISRUPTION";
+    if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return "SEVERE_WEATHER";
+    if (/strike|labor|union|industrial action/i.test(title)) return "LABOR_DISRUPTION";
+    if (/panama canal|drought|water level|transit reservation/i.test(title)) return "PANAMA_CANAL";
+    if (/closed|closure|blocked/i.test(title)) return "PORT_CLOSURE";
+    if (/rerout|route change|diversion/i.test(title)) return "ROUTE_DIVERSION";
+    if (/congestion|delay|disruption|transshipment/i.test(title)) return "PORT_CONGESTION";
+    return `STORY:${normalizedTitle(title)}`;
+  };
+  const eventLocation = (event: LiveEvent) => {
+    if (eventFamily(event.title) === "RED_SEA_SECURITY") return "RED_SEA_SUEZ";
+    return [...event.portCodes].sort().join("+") || "GLOBAL";
+  };
+  const sourceKey = (source: LiveEvent["sourceLinks"][number]) => source.url || `${source.name}:${source.observedAt}`;
+  const clusters: Array<LiveEvent & { clusterFamily: string; clusterLocation: string }> = [];
+
+  for (const event of groups.flat().sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))) {
+    const family = eventFamily(event.title);
+    const location = eventLocation(event);
+    const publishedAt = new Date(event.publishedAt).getTime();
+    const cluster = clusters.find(candidate => {
+      const candidateTime = new Date(candidate.publishedAt).getTime();
+      return candidate.clusterFamily === family
+        && candidate.clusterLocation === location
+        && Math.abs(candidateTime - publishedAt) <= 7 * 24 * 60 * 60 * 1000;
+    });
+
+    if (!cluster) {
+      clusters.push({ ...event, sourceLinks: [...event.sourceLinks], clusterFamily: family, clusterLocation: location });
+      continue;
+    }
+
+    const sourceLinks = [...cluster.sourceLinks, ...event.sourceLinks]
+      .filter((source, index, all) => all.findIndex(candidate => sourceKey(candidate) === sourceKey(source)) === index);
+    cluster.sourceLinks = sourceLinks;
+    cluster.portCodes = [...new Set([...cluster.portCodes, ...event.portCodes])];
+    cluster.scope = cluster.portCodes.join("·") || "GLOBAL";
+    cluster.confidence = Math.min(98, Math.max(cluster.confidence, event.confidence) + Math.min(6, (sourceLinks.length - 1) * 2));
+    if (severityRank[event.severity] > severityRank[cluster.severity]) cluster.severity = event.severity;
+    cluster.source = sourceLinks.length > 1 ? `${sourceLinks[0].name} + ${sourceLinks.length - 1}개 SOURCE` : sourceLinks[0]?.name ?? cluster.source;
+  }
+
+  return clusters.slice(0, 20).map(({ clusterFamily: _family, clusterLocation: _location, ...event }, index) => ({
+    ...event,
+    id: 10_000 + index,
+  }));
 }
