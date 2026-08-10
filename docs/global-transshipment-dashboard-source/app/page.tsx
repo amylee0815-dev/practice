@@ -574,7 +574,6 @@ export default function Home() {
       bls: new Set(impacted.map(row => row.blNo)).size,
       containers: new Set(impacted.flatMap(row => row.containerNos)).size,
       corporations: new Set(impacted.map(row => row.corporation)).size,
-      plannedStages: eventStages.filter(row => row.stage.status === "PLANNED").length,
       shipmentRisk: mix(false),
       containerRisk: mix(true),
     };
@@ -583,7 +582,7 @@ export default function Home() {
     .slice(0, 5), [eventPool, filteredShipments, relevantStages]);
 
   const selectedEvent = derivedEvents.find(event => event.id === selectedEventId) ?? derivedEvents[0] ?? {
-    ...eventPool[0], shipments: 0, bls: 0, containers: 0, corporations: 0, plannedStages: 0,
+    ...eventPool[0], shipments: 0, bls: 0, containers: 0, corporations: 0,
     shipmentRisk: { under7: 0, medium: 0, high: 0, critical: 0 },
     containerRisk: { under7: 0, medium: 0, high: 0, critical: 0 },
   };
@@ -794,7 +793,6 @@ export default function Home() {
           ["활성 이벤트", String(derivedEvents.length), "건", "필터 물동 매칭", "neutral"],
           ["Critical 이벤트", String(derivedEvents.filter(event => event.severity === "CRITICAL").length), "건", "즉시 확인", "danger"],
           ["영향 Shipment", String(selectedEvent.shipments), "건", "선택 이벤트", "warning"],
-          ["예정 TS 영향", String(selectedEvent.plannedStages), "단계", "예측 Alert 포함", "medium"],
           ["평균 신뢰도", derivedEvents.length ? String(Math.round(derivedEvents.reduce((sum, event) => sum + event.confidence, 0) / derivedEvents.length)) : "0", "%", "SOURCE 교차검증", "good"],
         ].map(([label, value, unit, delta, tone]) => <article className={`kpi-card ${tone}`} key={label}><div><span>{label}</span><i/></div><strong>{value}<small>{unit}</small></strong><p>{delta}</p></article>)}
       </section>}
@@ -905,7 +903,6 @@ export default function Home() {
             <div><span>Shipment</span><strong>{selectedEvent.shipments}</strong></div>
             <div><span>Container</span><strong>{selectedEvent.containers}</strong></div>
             <div><span>B/L</span><strong>{selectedEvent.bls}</strong></div>
-            <div><span>예정 TS 단계</span><strong>{selectedEvent.plannedStages}</strong></div>
             <div><span>영향 법인 수</span><strong>{selectedEvent.corporations}</strong></div>
           </div>
           <div className="risk-distributions">
