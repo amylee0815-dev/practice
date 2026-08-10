@@ -37,10 +37,27 @@ const portNames: Record<string, string> = {
   USLAX: "로스앤젤레스",
 };
 
+const normalizedTitle = (title: string) => title.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 80);
+
+const eventFamily = (title: string) => {
+  if (/red sea|suez|cape of good hope|houthi|bab el.mandeb/i.test(title)
+    || (/(middle east|gulf of aden)/i.test(title) && /rerout|diversion|shipping|vessel|carrier/i.test(title))) return "RED_SEA_SECURITY";
+  if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return "SEVERE_WEATHER";
+  if (/strike|labor|union|industrial action/i.test(title)) return "LABOR_DISRUPTION";
+  if (/panama canal|drought|water level|transit reservation/i.test(title)) return "PANAMA_CANAL";
+  if (/attack|war|security|conflict/i.test(title)) return "SECURITY_DISRUPTION";
+  if (/closed|closure|blocked/i.test(title)) return "PORT_CLOSURE";
+  if (/rerout|route change|diversion/i.test(title)) return "ROUTE_DIVERSION";
+  if (/congestion|delay|disruption|transshipment/i.test(title)) return "PORT_CONGESTION";
+  return `STORY:${normalizedTitle(title)}`;
+};
+
 export function koreanHeadline(title: string, portCodes: string[]) {
   if (/[가-힣]/.test(title)) return title;
   const place = portCodes.map(code => portNames[code] ?? code).join("·") || "글로벌";
-  if (/red sea|suez|cape of good hope|attack|war|security|conflict/i.test(title)) return "홍해·수에즈 해역 긴장에 따른 우회 운항 확대";
+  const family = eventFamily(title);
+  if (family === "RED_SEA_SECURITY") return "홍해·수에즈 해역 긴장에 따른 우회 운항 확대";
+  if (family === "SECURITY_DISRUPTION") return `${place} 지정학·해상 보안 리스크 확대`;
   if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return `${place} 기상 악화에 따른 해상운송 차질`;
   if (/strike|labor|union/i.test(title)) return `${place} 항만 파업에 따른 운영 차질`;
   if (/canal/i.test(title)) return `${place} 운하 운영 변경 및 통항 지연`;
@@ -98,18 +115,6 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
 
 export function mergeLiveEvents(groups: LiveEvent[][]) {
   const severityRank = { MEDIUM: 1, HIGH: 2, CRITICAL: 3 } as const;
-  const normalizedTitle = (title: string) => title.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 80);
-  const eventFamily = (title: string) => {
-    if (/red sea|suez|cape of good hope|houthi|bab el.mandeb/i.test(title)) return "RED_SEA_SECURITY";
-    if (/attack|war|security|conflict/i.test(title)) return "SECURITY_DISRUPTION";
-    if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return "SEVERE_WEATHER";
-    if (/strike|labor|union|industrial action/i.test(title)) return "LABOR_DISRUPTION";
-    if (/panama canal|drought|water level|transit reservation/i.test(title)) return "PANAMA_CANAL";
-    if (/closed|closure|blocked/i.test(title)) return "PORT_CLOSURE";
-    if (/rerout|route change|diversion/i.test(title)) return "ROUTE_DIVERSION";
-    if (/congestion|delay|disruption|transshipment/i.test(title)) return "PORT_CONGESTION";
-    return `STORY:${normalizedTitle(title)}`;
-  };
   const eventLocation = (event: LiveEvent) => {
     if (eventFamily(event.title) === "RED_SEA_SECURITY") return "RED_SEA_SUEZ";
     return [...event.portCodes].sort().join("+") || "GLOBAL";

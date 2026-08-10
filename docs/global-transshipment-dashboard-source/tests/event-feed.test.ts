@@ -49,3 +49,11 @@ test("keeps separate events when the event family or affected port differs", () 
   const shanghai = parseNewsRss(rss.replaceAll("Singapore", "Shanghai").replaceAll("singapore", "shanghai"), new Date("2026-08-04T04:00:00Z"));
   assert.equal(mergeLiveEvents([singapore, shanghai]).length, 2);
 });
+
+test("does not translate every security story as a Red Sea event", () => {
+  const security = parseNewsRss(rss.replace(
+    "Singapore port congestion delays transshipment",
+    "Security conflict disrupts Singapore terminal operations",
+  ), new Date("2026-08-04T04:00:00Z"));
+  assert.equal(security[0].titleKo, "싱가포르 지정학·해상 보안 리스크 확대");
+});
