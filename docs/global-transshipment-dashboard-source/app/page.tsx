@@ -38,6 +38,7 @@ type EventItem = {
   type: string;
   title: string;
   titleKo?: string;
+  summary?: string;
   scope: string;
   severity: Severity;
   source: string;
@@ -123,6 +124,11 @@ const eventSourceLinks: Record<number, EventSource[]> = {
     { name: "Kuehne+Nagel myKN News", type: "물류 뉴스", observedAt: "1시간 전", url: "https://mykn.kuehne-nagel.com/news/" },
     { name: "International Maritime Organization", type: "국제기구", observedAt: "1시간 12분 전", url: "https://www.imo.org/en/mediacentre/pages/default.aspx" },
   ],
+};
+
+const fallbackEventSummary = (event: EventItem, sourceCount: number) => {
+  const focus = event.portCodes.length ? event.portCodes.join("·") : "글로벌 항로";
+  return `${sourceCount}개 관련 출처를 종합하면 '${event.titleKo ?? event.title}' 이슈로 ${focus} 연결 물동의 일정 변동 가능성이 탐지됩니다. 현장 공지와 영향 물동을 함께 모니터링해야 합니다.`;
 };
 
 const apiSources = [
@@ -1119,6 +1125,7 @@ export default function Home() {
               <div><SeverityBadge level={sourceEvent.severity}/><span>{sourceEvent.type}</span><span>{sourceEvent.scope}</span></div>
               <strong>{sourceEvent.titleKo ?? sourceEvent.title}</strong>
               {sourceEvent.titleKo && sourceEvent.titleKo !== sourceEvent.title && <small className="source-original-title">원문: {sourceEvent.title}</small>}
+              <div className="source-merged-summary"><b>통합 요약</b><p>{sourceEvent.summary ?? fallbackEventSummary(sourceEvent, allEventSources[sourceEvent.id]?.length ?? 1)}</p></div>
               <p>탐지 신뢰도 {sourceEvent.confidence}% · {sourceEvent.updated} 갱신</p>
             </div>
             <div className="source-link-list">

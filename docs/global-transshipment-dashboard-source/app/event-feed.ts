@@ -4,6 +4,7 @@ export type LiveEvent = {
   type: string;
   title: string;
   titleKo: string;
+  summary: string;
   scope: string;
   severity: "CRITICAL" | "HIGH" | "MEDIUM";
   source: string;
@@ -39,13 +40,19 @@ const portNames: Record<string, string> = {
 
 const normalizedTitle = (title: string) => title.toLowerCase().replace(/[^a-z0-9가-힣]/g, "").slice(0, 80);
 
+const allPortCodes = ports.map(([code]) => code);
+
+const relevantSignal = /port|terminal|shipping|maritime|vessel|container|transshipment|canal|freight|logistics|trucker|truck driver|dockworker|longshore|typhoon|hurricane|storm|cyclone|flood|earthquake|tsunami|volcano|wildfire|drought|strike|labor|union|industrial action|protest|blockade|sanction|tariff|war|attack|conflict|security|geopolit|election|coup|red sea|suez|houthi|bab el.mandeb|strait/i;
+
 const eventFamily = (title: string) => {
   if (/red sea|suez|cape of good hope|houthi|bab el.mandeb/i.test(title)
     || (/(middle east|gulf of aden)/i.test(title) && /rerout|diversion|shipping|vessel|carrier/i.test(title))) return "RED_SEA_SECURITY";
-  if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return "SEVERE_WEATHER";
-  if (/strike|labor|union|industrial action/i.test(title)) return "LABOR_DISRUPTION";
+  if (/earthquake|tsunami|volcano|wildfire|flood|landslide|natural disaster/i.test(title)) return "NATURAL_DISASTER";
+  if (/typhoon|hurricane|storm|weather|cyclone|monsoon|blizzard|heatwave|fog/i.test(title)) return "SEVERE_WEATHER";
+  if (/strike|labor|union|industrial action|dockworker|longshore|trucker|truck driver|walkout/i.test(title)) return "LABOR_DISRUPTION";
   if (/panama canal|drought|water level|transit reservation/i.test(title)) return "PANAMA_CANAL";
-  if (/attack|war|security|conflict/i.test(title)) return "SECURITY_DISRUPTION";
+  if (/sanction|tariff|election|coup|protest|blockade|politic|geopolit/i.test(title)) return "POLITICAL_DISRUPTION";
+  if (/attack|war|security|conflict|piracy/i.test(title)) return "SECURITY_DISRUPTION";
   if (/closed|closure|blocked/i.test(title)) return "PORT_CLOSURE";
   if (/rerout|route change|diversion/i.test(title)) return "ROUTE_DIVERSION";
   if (/congestion|delay|disruption|transshipment/i.test(title)) return "PORT_CONGESTION";
@@ -58,8 +65,10 @@ export function koreanHeadline(title: string, portCodes: string[]) {
   const family = eventFamily(title);
   if (family === "RED_SEA_SECURITY") return "홍해·수에즈 해역 긴장에 따른 우회 운항 확대";
   if (family === "SECURITY_DISRUPTION") return `${place} 지정학·해상 보안 리스크 확대`;
-  if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return `${place} 기상 악화에 따른 해상운송 차질`;
-  if (/strike|labor|union/i.test(title)) return `${place} 항만 파업에 따른 운영 차질`;
+  if (family === "POLITICAL_DISRUPTION") return `${place} 정치·통상 이슈에 따른 물류 리스크`;
+  if (family === "NATURAL_DISASTER") return `${place} 자연재해에 따른 항만·운송 차질`;
+  if (/typhoon|hurricane|storm|weather|cyclone|monsoon|blizzard|heatwave|fog/i.test(title)) return `${place} 기상 악화에 따른 해상운송 차질`;
+  if (/strike|labor|union|dockworker|longshore|trucker|truck driver|walkout/i.test(title)) return `${place} 항만·육상운송 노사 이슈`;
   if (/canal/i.test(title)) return `${place} 운하 운영 변경 및 통항 지연`;
   if (/closed|closure|blocked/i.test(title)) return `${place} 항만 폐쇄 및 운영 차질`;
   if (/rerout|route change|diversion/i.test(title)) return `${place} 항로 우회 및 운항 일정 변경`;
@@ -73,11 +82,30 @@ const text = (xml: string, tag: string) => {
 };
 
 const classify = (title: string) => {
-  if (/typhoon|hurricane|storm|weather|cyclone/i.test(title)) return "기상";
-  if (/strike|labor|union/i.test(title)) return "파업";
+  if (/earthquake|tsunami|volcano|wildfire|flood|landslide|natural disaster/i.test(title)) return "자연재해";
+  if (/typhoon|hurricane|storm|weather|cyclone|monsoon|blizzard|heatwave|fog/i.test(title)) return "기상";
+  if (/strike|labor|union|industrial action|dockworker|longshore|trucker|truck driver|walkout/i.test(title)) return "노사·파업";
   if (/canal|suez|panama/i.test(title)) return "운하 운영";
+  if (/sanction|tariff|election|coup|protest|blockade|politic|geopolit/i.test(title)) return "정치·통상";
   if (/attack|war|red sea|security|conflict/i.test(title)) return "지정학";
   return "항만·운송";
+};
+
+const inferAffectedPorts = (title: string, detected: string[]) => {
+  if (detected.length) return detected;
+  if (/red sea|suez|houthi|bab el.mandeb|middle east|gulf of aden/i.test(title)) return ["SGSIN", "AEJEA", "NLRTM"];
+  if (/europe|european|north sea|uk|britain|germany|france|belgium|netherlands/i.test(title)) return ["NLRTM"];
+  if (/us west coast|california|united states|u\.s\.|america|trucker|longshore/i.test(title)) return ["USLAX"];
+  if (/china|east china|yangtze/i.test(title)) return ["CNSHA", "CNNGB"];
+  if (/southeast asia|malacca|indonesia|malaysia/i.test(title)) return ["SGSIN"];
+  if (/panama|latin america|central america/i.test(title)) return ["PAPTY", "USLAX"];
+  return /shipping|maritime|canal|vessel|container|freight|logistics/i.test(title) ? allPortCodes : [];
+};
+
+const buildSummary = (event: Pick<LiveEvent, "titleKo" | "type" | "portCodes" | "sourceLinks">) => {
+  const place = event.portCodes.map(code => portNames[code] ?? code).join("·") || "글로벌 항로";
+  const sources = event.sourceLinks.length;
+  return `${sources}개 출처를 종합하면 ${event.titleKo}에 따라 ${place} 관련 환적·운항 일정의 변동 가능성이 탐지됩니다. 현재 영향 물동과 후속 공지를 함께 모니터링해야 합니다.`;
 };
 
 export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
@@ -89,17 +117,17 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
     const sourceUrl = item.match(/<source[^>]*url=["']([^"']+)["']/i)?.[1] || link;
     const publishedAt = new Date(text(item, "pubDate"));
     const ageMinutes = Number.isNaN(publishedAt.getTime()) ? 0 : Math.max(0, Math.round((now.getTime() - publishedAt.getTime()) / 60_000));
-    const portCodes = ports.filter(([, pattern]) => pattern.test(title)).map(([code]) => code);
-    if (!portCodes.length && /red sea|suez|cape of good hope/i.test(title)) portCodes.push("SGSIN", "AEJEA", "NLRTM");
-    const severe = /closed|closure|blocked|attack|war|emergency/i.test(title);
-    const elevated = /delay|congestion|strike|storm|disruption|rerout/i.test(title);
+    const portCodes = inferAffectedPorts(title, ports.filter(([, pattern]) => pattern.test(title)).map(([code]) => code));
+    const severe = /closed|closure|blocked|attack|war|emergency|earthquake|tsunami|major flood|coup/i.test(title);
+    const elevated = /delay|congestion|strike|storm|cyclone|flood|wildfire|protest|sanction|tariff|disruption|rerout/i.test(title);
     const official = /authority|government|port of|canal|maersk|msc|cma cgm|kuehne|nagel/i.test(source);
-    return {
+    const event = {
       id: 10_000 + index,
       portCodes,
       type: classify(title),
       title,
       titleKo: koreanHeadline(title, portCodes),
+      summary: "",
       scope: portCodes.length ? portCodes.join("·") : "GLOBAL",
       severity: severe ? "CRITICAL" as const : elevated ? "HIGH" as const : "MEDIUM" as const,
       source,
@@ -110,7 +138,8 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
       publishedAt: Number.isNaN(publishedAt.getTime()) ? now.toISOString() : publishedAt.toISOString(),
       sourceLinks: [{ name: source, type: official ? "공식·선사 SOURCE" : "뉴스 SOURCE", observedAt: ageMinutes < 60 ? `${ageMinutes}분 전` : `${Math.floor(ageMinutes / 60)}시간 전`, url: sourceUrl }],
     };
-  }).filter(event => event.title && event.portCodes.length > 0);
+    return { ...event, summary: buildSummary(event) };
+  }).filter(event => event.title && relevantSignal.test(event.title) && event.portCodes.length > 0);
 }
 
 export function mergeLiveEvents(groups: LiveEvent[][]) {
@@ -143,10 +172,12 @@ export function mergeLiveEvents(groups: LiveEvent[][]) {
     cluster.confidence = Math.min(98, Math.max(cluster.confidence, event.confidence) + Math.min(6, (sourceLinks.length - 1) * 2));
     if (severityRank[event.severity] > severityRank[cluster.severity]) cluster.severity = event.severity;
     cluster.source = sourceLinks.length > 1 ? `${sourceLinks[0].name} + ${sourceLinks.length - 1}개 SOURCE` : sourceLinks[0]?.name ?? cluster.source;
+    cluster.summary = buildSummary(cluster);
   }
 
   return clusters.slice(0, 20).map(({ clusterFamily: _family, clusterLocation: _location, ...event }, index) => ({
     ...event,
+    summary: buildSummary(event),
     id: 10_000 + index,
   }));
 }

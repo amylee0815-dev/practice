@@ -57,3 +57,27 @@ test("does not translate every security story as a Red Sea event", () => {
   ), new Date("2026-08-04T04:00:00Z"));
   assert.equal(security[0].titleKo, "싱가포르 지정학·해상 보안 리스크 확대");
 });
+
+test("includes weather, natural-disaster, political and labor signals", () => {
+  const titles = [
+    "Typhoon disrupts Shanghai container shipping",
+    "Earthquake closes Los Angeles port terminal",
+    "New sanctions disrupt maritime shipping in Europe",
+    "Trucker union strike blocks California port gates",
+  ];
+  const events = titles.flatMap(title => parseNewsRss(rss.replace(
+    "Singapore port congestion delays transshipment",
+    title,
+  ), new Date("2026-08-04T04:00:00Z")));
+  assert.deepEqual(events.map(event => event.type), ["기상", "자연재해", "정치·통상", "노사·파업"]);
+  assert.ok(events.every(event => event.summary.length > 40));
+});
+
+test("refreshes the merged summary after combining sources", () => {
+  const events = parseNewsRss(rss, new Date("2026-08-04T04:00:00Z"));
+  const [cluster] = mergeLiveEvents([events, events.map(event => ({
+    ...event,
+    sourceLinks: [{ ...event.sourceLinks[0], name: "Second Source", url: "https://second.example/story" }],
+  }))]);
+  assert.match(cluster.summary, /2개 출처/);
+});

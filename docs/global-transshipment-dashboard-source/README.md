@@ -9,7 +9,8 @@
 - 필터 결과 기준 Raw Data CSV 다운로드
 - 지도 확대·축소·이동 및 항만 복수 선택/재선택 해제
 - 항만별 영향 물동 및 우선조치 큐
-- 뉴스 RSS 수집과 데모 이벤트 병합
+- 항만 혼잡·기상·자연재해·정치·지정학·노사 이슈 RSS 수집
+- 동일 이벤트 중복 군집화, 출처 병합, 1–2줄 통합 요약
 - A1~A5 데모 에이전트 실행 API
 - 필터 및 이벤트 처리 단위 테스트
 
@@ -30,6 +31,8 @@ npm run dev
 npm run build
 node --test tests/dashboard-filtering.test.ts tests/event-feed.test.ts
 ```
+
+Vercel에서는 이 폴더를 프로젝트 루트로 선택하면 `vercel.json`의 Next.js 빌드 설정을 사용합니다.
 
 ## 주로 수정할 파일
 

@@ -14,7 +14,13 @@
   --amber: #c66a00;
   --red: #d63d52;
   --blue: #2d69c7;
+  --font-geist-sans: "Segoe UI", "Apple SD Gothic Neo", Arial, Helvetica, sans-serif;
+  --font-geist-mono: "Cascadia Mono", Consolas, monospace;
 }
+
+.source-merged-summary{display:grid!important;gap:5px!important;margin:4px 0;padding:10px 12px;border-left:3px solid var(--cyan);border-radius:3px;background:rgba(43,211,255,.07)}
+.source-merged-summary b{font-size:9px;color:var(--cyan)}
+.source-merged-summary p{font-size:10px!important;line-height:1.65;color:var(--foreground)!important}
 
 @theme inline {
   --color-background: var(--background);
