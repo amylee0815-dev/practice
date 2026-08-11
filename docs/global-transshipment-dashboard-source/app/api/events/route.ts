@@ -35,7 +35,7 @@ export async function GET() {
     collectedAt: new Date().toISOString(),
     latencyMs: Date.now() - startedAt,
     sourcesSucceeded: results.filter(result => result.status === "fulfilled").length,
-    sourcesTotal: feeds.length,
+    sourcesTotal: results.length,
     events,
   }, { headers: { "cache-control": "no-store" } });
 }
