@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeLiveEvents, parseNewsRss } from "../app/event-feed.ts";
+import { mergeLiveEvents, parseGdeltJson, parseNewsRss } from "../app/event-feed.ts";
 
 const rss = `<?xml version="1.0"?><rss><channel><item>
   <title>Singapore port congestion delays transshipment</title>
@@ -80,4 +80,16 @@ test("refreshes the merged summary after combining sources", () => {
     sourceLinks: [{ ...event.sourceLinks[0], name: "Second Source", url: "https://second.example/story" }],
   }))]);
   assert.match(cluster.summary, /2개 출처/);
+});
+
+test("normalizes GDELT article lists into dashboard events", () => {
+  const [event] = parseGdeltJson(JSON.stringify({ articles: [{
+    title: "Trucker union strike blocks Los Angeles port gates",
+    url: "https://news.example/trucker-strike",
+    domain: "news.example",
+    seendate: "20260804T030000Z",
+  }] }), new Date("2026-08-04T04:00:00Z"));
+  assert.equal(event.type, "노사·파업");
+  assert.deepEqual(event.portCodes, ["USLAX"]);
+  assert.equal(event.sourceLinks[0].url, "https://news.example/trucker-strike");
 });

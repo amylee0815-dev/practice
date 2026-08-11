@@ -142,6 +142,24 @@ export function parseNewsRss(xml: string, now = new Date()): LiveEvent[] {
   }).filter(event => event.title && relevantSignal.test(event.title) && event.portCodes.length > 0);
 }
 
+export function parseGdeltJson(payload: string, now = new Date()): LiveEvent[] {
+  let articles: Array<{ title?: string; url?: string; domain?: string; seendate?: string }> = [];
+  try {
+    const parsed = JSON.parse(payload) as { articles?: typeof articles };
+    articles = parsed.articles ?? [];
+  } catch {
+    return [];
+  }
+  const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const rss = `<rss><channel>${articles.map(article => {
+    const seen = article.seendate && /^\d{8}T\d{6}Z$/.test(article.seendate)
+      ? `${article.seendate.slice(0, 4)}-${article.seendate.slice(4, 6)}-${article.seendate.slice(6, 8)}T${article.seendate.slice(9, 11)}:${article.seendate.slice(11, 13)}:${article.seendate.slice(13, 15)}Z`
+      : now.toISOString();
+    return `<item><title>${escapeXml(article.title ?? "")}</title><link>${escapeXml(article.url ?? "")}</link><pubDate>${new Date(seen).toUTCString()}</pubDate><source url="${escapeXml(article.url ?? "")}">${escapeXml(article.domain ?? "GDELT News")}</source></item>`;
+  }).join("")}</channel></rss>`;
+  return parseNewsRss(rss, now);
+}
+
 export function mergeLiveEvents(groups: LiveEvent[][]) {
   const severityRank = { MEDIUM: 1, HIGH: 2, CRITICAL: 3 } as const;
   const eventLocation = (event: LiveEvent) => {
