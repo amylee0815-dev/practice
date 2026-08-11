@@ -1,0 +1,5 @@
+moviepy==2.2.1
+numpy>=1.25
+pillow>=9.2,<12
+imageio-ffmpeg==0.6.0
+soundfile==0.14.0
